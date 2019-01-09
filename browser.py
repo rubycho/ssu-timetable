@@ -46,14 +46,15 @@ class Browser:
             },
             data={
                 'sap-charset': 'utf-8',
-                'sap-wd-secured-id': self.secure_id,
+                'sap-wd-secure-id': self.secure_id,
                 'SAPEVENTQUEUE': command
             }
         )
 
         if r.status_code != 200:
-            print(r.text)
-            raise BrowserException('Request unsuccessful: ' + r.status_code)
+            print("Failed to run command: ")
+            print(command)
+            raise BrowserException('Request unsuccessful: ' + str(r.status_code))
 
         return r.text
 
