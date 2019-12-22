@@ -1,4 +1,6 @@
-CURRENT_YEAR_VALUE = '2019학년도'
-CURRENT_SEMESTER_VALUE = '2 학기'
-
-MAIN_TABLE_ID = 'WD0176-contentTBody'
+class Config:
+    """
+    Config Storage.
+    """
+    def __init__(self):
+        self.MAIN_TABLE_ID = 'WD0176-contentTBody'

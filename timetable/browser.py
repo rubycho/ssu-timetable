@@ -5,14 +5,17 @@ from bs4 import BeautifulSoup
 USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) ' \
              'Ubuntu Chromium/71.0.3578.80 Chrome/71.0.3578.80 Safari/537.36'
 
-URLS = {
-    'BASE_URL': 'http://ecc.ssu.ac.kr',
+
+class URLS:
+    BASE_URL = 'http://ecc.ssu.ac.kr'
     # 시간표 URL, extract SAP contexts (secure-id, contextid)
-    'CONNECT_URL': 'http://ecc.ssu.ac.kr/sap/bc/webdynpro/sap/zcmw2100?sap-language=KO'
-}
+    CONNECT_URL = 'http://ecc.ssu.ac.kr/sap/bc/webdynpro/sap/zcmw2100?sap-language=KO'
 
 
 class Browser:
+    """
+    SAP와 상호작용하는 Client 클래스
+    """
     def __init__(self):
         self.session = requests.Session()
         self.secure_id = None
@@ -23,7 +26,11 @@ class Browser:
         })
 
     def connect(self):
-        r = self.session.get(URLS['CONNECT_URL'])
+        """
+        초기 접속 단계.
+        이후 요청(request)에 필요한 secured id, action url을 추출한다.
+        """
+        r = self.session.get(URLS.CONNECT_URL)
 
         soup = BeautifulSoup(r.text, 'html.parser')
         secure_id = soup.find(id='sap-wd-secure-id')
@@ -38,9 +45,16 @@ class Browser:
         self.secure_id = secure_id['value']
         self.context_id = context_id['action']
 
-    def request(self, command):
+    def request(self, command: str) -> str:
+        """
+        SAP에 이벤트를 요청(POST)한다.
+        status code가 200이 아니면 Exception이 발생한다.
+
+        :param command: POST DATA SAPEVENTQUEUE에 해당하는 str
+        :return: response body text
+        """
         r = self.session.post(
-            URLS['BASE_URL'] + self.context_id,
+            URLS.BASE_URL + self.context_id,
             headers={
                 'Content-Type': 'application/x-www-form-urlencoded'
             },
@@ -58,11 +72,11 @@ class Browser:
 
         return r.text
 
-    def get_secure_id(self):
-        return self.secure_id
-
-    def get_context_id(self):
-        return self.context_id
+    def status(self):
+        print("=======================")
+        print('[Browser] secure_id = ' + self.secure_id)
+        print('[Browser] context_id = ' + self.context_id)
+        print("=======================")
 
 
 class BrowserException(Exception):
