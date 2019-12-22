@@ -1,6 +1,6 @@
-from browser import Browser
-from event_generator import EventGenerator
-from config import *
+from .browser import Browser
+from .event_generator import EventGenerator
+from .config import *
 
 from enum import Enum
 from bs4 import BeautifulSoup

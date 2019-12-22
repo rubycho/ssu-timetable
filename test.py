@@ -1,5 +1,5 @@
 # test.py: prints every classes
-from parser import Parser, ParserActions
+from timetable.parser import Parser, ParserActions
 
 parser = Parser()
 parser.action(ParserActions.INIT, 0)
