@@ -1,8 +1,9 @@
 # ssu-timetable
 
-숭실대학교 시간표 시스템 파서 which is inspired from [gomjellie/pysaint](https://github.com/gomjellie/pysaint).
+숭실대학교 [과목 조회 시스템](http://ecc.ssu.ac.kr/sap/bc/webdynpro/sap/zcmw2100?sap-language=KO#) 파서 
+which is inspired from [gomjellie/pysaint](https://github.com/gomjellie/pysaint).
 
-pysaint와 달리 해당 패키지는 시간표 조회 기능만 가집니다.
+pysaint와 달리 해당 패키지는 과목 리스트 조회 기능만 가집니다.
 
 현재는 과목 리스트 데이터를 추가 처리 없이 html 코드로만 제공합니다.
 
