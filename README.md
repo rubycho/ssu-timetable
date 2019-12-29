@@ -5,8 +5,6 @@ which is inspired from [gomjellie/pysaint](https://github.com/gomjellie/pysaint)
 
 pysaint와 달리 해당 패키지는 과목 리스트 조회 기능만 가집니다.
 
-현재는 과목 리스트 데이터를 추가 처리 없이 html 코드로만 제공합니다.
-
 사용방법은 usage.ipynb 파일을 참고하세요.
 
 ## 개발환경
