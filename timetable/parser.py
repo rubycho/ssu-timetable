@@ -138,17 +138,17 @@ class Parser:
         # 탭 내부 콤보박스 액션
         # value = data-itemkey
         elif what == ParserActions.SEL1 or what == ParserActions.SEL2 or what == ParserActions.SEL3:
-            idx = what.value - ParserActions.SEL1.value
-            if idx == 0:
+            idx = what.value - ParserActions.SEL1.value + 1
+            if idx > self.max_sel:
+                raise ParserException('index out of range: idx={}, max={}'.format(idx, self.max_sel))
+
+            target = None
+            if idx == 1:
                 target = self.keystore.sel1_id
-            elif idx == 1:
-                target = self.keystore.sel2_id
             elif idx == 2:
+                target = self.keystore.sel2_id
+            elif idx == 3:
                 target = self.keystore.sel3_id
-            else:
-                print("[Parser] index out of range; of max sel")
-                print("[Parser] Do nothing :)")
-                return
 
             response = self.browser.request(EventGenerator.combobox(target, value))
             self.data[what] = response
