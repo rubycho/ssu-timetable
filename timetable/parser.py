@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 
 from .browser import Browser
 from .config import Config
-from .event_generator import EventGenerator
+from .event_generator import KeyStore, EventGenerator
 
 
 class ParserActions(Enum):
@@ -18,6 +18,7 @@ class ParserActions(Enum):
     SEL2 = 5
     SEL3 = 6
     SEARCH = 7
+    LINE = 8
 
 
 class Parser:
@@ -27,7 +28,7 @@ class Parser:
     def __init__(self, config: Config):
         self.config = config
         self.browser = Browser()
-        self.event_generator = EventGenerator()
+        self.keystore = KeyStore()
 
         self.data = {}
         self.selections = {}
@@ -50,7 +51,7 @@ class Parser:
         # 초기화 단계 액션
         # value: Don't care
         if what == ParserActions.INIT:
-            response = self.browser.request(self.event_generator.init())
+            response = self.browser.request(EventGenerator.init())
             self.data[what] = response
 
             tmp = BeautifulSoup(response, 'lxml')
@@ -58,6 +59,7 @@ class Parser:
             # 학년도, 학기 input 찾기
             year_label = tmp.find('label', string='학년도')
             semester_label = tmp.find('label', string='학기')
+            line_label = tmp.find('label', string='줄수 / 페이지')
 
             if year_label is None:
                 raise ParserException('label for year not found')
@@ -65,8 +67,12 @@ class Parser:
             if semester_label is None:
                 raise ParserException('label for semester not found')
 
+            if line_label is None:
+                raise ParserException('label for line not found')
+
             year_input = tmp.find(id=year_label['f'])
             semester_input = tmp.find(id=semester_label['f'])
+            line_input = tmp.find(id=line_label['f'])
 
             # 탭 목록 찾기
             tabs = tmp.find_all(action='TAB_ACCESS', ct="TSITM_standards")
@@ -78,15 +84,17 @@ class Parser:
             tab_input = tabs[0].find_parent()
             tab_id = tab_input['id'].replace('-panel', '')
 
-            self.event_generator.set_ids(
+            self.keystore.set_ids(
                 year_id=year_input['id'],
                 semester_id=semester_input['id'],
+                line_id=line_input['id'],
                 tab_id=tab_id
             )
 
             # 선택 가능한 학년도, 학기 아이템 추가
             self.selections[ParserActions.YEAR] = self.retrieve_selections_from_input(tmp, year_input)
             self.selections[ParserActions.SEMESTER] = self.retrieve_selections_from_input(tmp, semester_input)
+            self.selections[ParserActions.LINE] = self.retrieve_selections_from_input(tmp, line_input)
 
             # 선택 가능한 탭 아이템 추가
             _tabs = []
@@ -94,43 +102,55 @@ class Parser:
                 _tabs.append((sel['id'], sel.get_text()))
             self.selections[ParserActions.TAB] = _tabs
 
+        # 줄 수 선택 액션
+        # value: line (str), '10'
+        elif what == ParserActions.LINE:
+            response = self.browser.request(EventGenerator.combobox(self.keystore.line_id, str(value)))
+            self.data[what] = response
+
         # 년도 선택 액션
         # value: year (int)
         elif what == ParserActions.YEAR:
-            response = self.browser.request(self.event_generator.select_year(value))
+            response = self.browser.request(EventGenerator.combobox(self.keystore.year_id, str(value)))
             self.data[what] = response
 
         # 학기 선택 액션
         # value: semester (itemkey, string)
         elif what == ParserActions.SEMESTER:
-            response = self.browser.request(self.event_generator.select_semester(value))
+            response = self.browser.request(EventGenerator.combobox(self.keystore.semester_id, value))
             self.data[what] = response
 
         # 탭 선택 액션
         # value: tab_id (id of tab, string)
         elif what == ParserActions.TAB:
-            response = self.browser.request(self.event_generator.select_tab(value))
+            response = self.browser.request(EventGenerator.tab(self.keystore.tab_id, value))
             self.data[what] = response
 
             # 결과를 바탕으로, 사용가능한 콤보박스와 버튼을 파악한다.
             tmp = BeautifulSoup(response, 'lxml')
-            tab_selections = tmp.find(id=self.event_generator.get_ids()['tab_id']).find_all('input')
+            tab_selections = tmp.find(id=self.keystore.get_ids()['tab_id']).find_all('input')
             search_button = tmp.find(title='찾기 ')
 
             self.set_tab_inner_selection_ids(tab_selections)
             self.parse_tab_inner_selections(tmp)
-            self.event_generator.set_ids(btn_id=search_button['id'])
+            self.keystore.set_ids(btn_id=search_button['id'])
 
-        # 콤보박스 액션
+        # 탭 내부 콤보박스 액션
         # value = data-itemkey
         elif what == ParserActions.SEL1 or what == ParserActions.SEL2 or what == ParserActions.SEL3:
-            idx = what.value - ParserActions.SEL1.value + 1
-            if idx > self.max_sel:
+            idx = what.value - ParserActions.SEL1.value
+            if idx == 0:
+                target = self.keystore.sel1_id
+            elif idx == 1:
+                target = self.keystore.sel2_id
+            elif idx == 2:
+                target = self.keystore.sel3_id
+            else:
                 print("[Parser] index out of range; of max sel")
                 print("[Parser] Do nothing :)")
                 return
 
-            response = self.browser.request(self.event_generator.select_sel(idx, value))
+            response = self.browser.request(EventGenerator.combobox(target, value))
             self.data[what] = response
 
             # 선택 후에는 다음 콤보박스에 대한 옵션이 주어진다.
@@ -140,7 +160,7 @@ class Parser:
         # 검색 액션
         # value: Don't care
         elif what == ParserActions.SEARCH:
-            response = self.browser.request(self.event_generator.search())
+            response = self.browser.request(EventGenerator.button(self.keystore.btn_id))
 
             tmp = BeautifulSoup(response, 'lxml')
             table = tmp.find(id=self.config.MAIN_TABLE_ID)
@@ -163,19 +183,19 @@ class Parser:
 
         selection_length = len(bstype_tab_inner_selections)
         if selection_length > 0:
-            self.event_generator.set_ids(
+            self.keystore.set_ids(
                 sel1_id=bstype_tab_inner_selections[0]['id'],
                 sel1_scrl_id=self._retrieve_scrl_id_from_input(bstype_tab_inner_selections[0])
             )
             self.max_sel += 1
         if selection_length > 1:
-            self.event_generator.set_ids(
+            self.keystore.set_ids(
                 sel2_id=bstype_tab_inner_selections[1]['id'],
                 sel2_scrl_id=self._retrieve_scrl_id_from_input(bstype_tab_inner_selections[1])
             )
             self.max_sel += 1
         if selection_length > 2:
-            self.event_generator.set_ids(
+            self.keystore.set_ids(
                 sel3_id=bstype_tab_inner_selections[2]['id'],
                 sel3_scrl_id=self._retrieve_scrl_id_from_input(bstype_tab_inner_selections[2])
             )
@@ -187,7 +207,7 @@ class Parser:
 
         :param bstype_body: BeautifulSoup instance
         """
-        keys = self.event_generator.get_ids()
+        keys = self.keystore.get_ids()
 
         if keys['sel1_scrl_id']:
             self.selections[ParserActions.SEL1] = self._retrieve_selections_from_input(
@@ -205,7 +225,7 @@ class Parser:
         """
         탭 상태가 변경된 경우, 콤보박스와 관련된 변수를 초기화한다.
         """
-        self.event_generator.reset_sel_ids()
+        self.keystore.reset_sel_ids()
         self.max_sel = 0
 
     @staticmethod
@@ -254,7 +274,7 @@ class Parser:
 
     def status(self):
         self.browser.status()
-        self.event_generator.status()
+        self.keystore.status()
 
 
 class ParserException(Exception):
