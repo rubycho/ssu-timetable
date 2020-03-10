@@ -1,5 +1,7 @@
 # ssu-timetable
 
+[![PyPI version](https://badge.fury.io/py/ssu-timetable.svg)](https://badge.fury.io/py/ssu-timetable)
+
 숭실대학교 [과목 조회 시스템](http://ecc.ssu.ac.kr/sap/bc/webdynpro/sap/zcmw2100?sap-language=KO#) 파서 
 which is inspired from [gomjellie/pysaint](https://github.com/gomjellie/pysaint).
 
